@@ -25,6 +25,11 @@ from openai import OpenAI
 # 스크린샷 캡처 모듈 import
 from screenshot_capture import capture_upbit_screenshot
 
+# 반성 시스템 import
+from analysis.reflection_system import create_immediate_reflection, create_periodic_reflection, analyze_learning_patterns, generate_strategy_improvements
+from database.trade_recorder import save_trade_record, save_market_data_record
+from utils.json_cleaner import clean_json_data
+
 # Structured Output Models
 class KeyIndicators(BaseModel):
     rsi_signal: str = Field(description="RSI 신호: overbought, oversold, neutral")
@@ -667,7 +672,10 @@ def create_market_analysis_data_with_indicators(daily_df, minute_df, current_pri
         "analysis_time": datetime.now().isoformat()
     }
     
-    return analysis_data
+    # JSON 직렬화 전에 NaN, Infinity 값 정리
+    cleaned_analysis_data = clean_json_data(analysis_data)
+    
+    return cleaned_analysis_data
 
 def ai_trading_decision_with_indicators(market_data):
     """
@@ -926,9 +934,9 @@ def ai_trading_decision_with_vision(market_data, chart_image_base64=None):
         print(f"❌ AI 분석 중 오류 발생: {e}")
         return None
 
-def execute_trading_decision(upbit, decision, investment_status):
+def execute_trading_decision(upbit, decision, investment_status, market_data=None):
     """
-    AI 결정에 따른 매매 실행
+    AI 결정에 따른 매매 실행 (반성 시스템 통합)
     """
     print("=" * 50)
     print("🔄 매매 실행 중")
@@ -945,6 +953,17 @@ def execute_trading_decision(upbit, decision, investment_status):
     print(f"💰 보유 현금: {krw_balance:,.2f}원")
     print(f"₿ 보유 비트코인: {btc_balance:.8f} BTC")
     print(f"📊 현재 가격: {current_price:,.0f}원")
+    
+    # 거래 실행 결과를 저장할 변수
+    execution_result = {
+        'action': 'none',
+        'price': current_price,
+        'amount': 0,
+        'total_value': 0,
+        'fee': 0,
+        'order_id': '',
+        'status': 'not_executed'
+    }
     
     if decision['decision'] == 'buy':
         print("🟢 매수 신호 감지")
@@ -987,6 +1006,16 @@ def execute_trading_decision(upbit, decision, investment_status):
                 print("✅ 매수 주문 성공!")
                 print(f"📋 주문 결과: {result}")
                 
+                # 실행 결과 업데이트
+                execution_result.update({
+                    'action': 'buy',
+                    'amount': expected_btc if current_price > 0 else 0,
+                    'total_value': buy_amount,
+                    'fee': fee_amount,
+                    'order_id': result.get('uuid', ''),
+                    'status': 'executed'
+                })
+                
                 # 주문 후 잠시 대기
                 print("⏳ 주문 처리 중... (3초 대기)")
                 time.sleep(3)
@@ -995,12 +1024,17 @@ def execute_trading_decision(upbit, decision, investment_status):
                 print("\n📊 매수 후 계좌 상태:")
                 get_investment_status(upbit)
                 
+                # 거래 기록 저장 및 반성 생성
+                _save_trade_and_create_reflection(decision, execution_result, investment_status, market_data)
+                
                 return True
             else:
                 print("❌ 매수 주문 실패")
+                execution_result['status'] = 'failed'
                 return False
         except Exception as e:
             print(f"❌ 매수 주문 중 오류: {e}")
+            execution_result['status'] = 'error'
             return False
             
     elif decision['decision'] == 'sell':
@@ -1035,6 +1069,16 @@ def execute_trading_decision(upbit, decision, investment_status):
                 print("✅ 매도 주문 성공!")
                 print(f"📋 주문 결과: {result}")
                 
+                # 실행 결과 업데이트
+                execution_result.update({
+                    'action': 'sell',
+                    'amount': sell_amount,
+                    'total_value': expected_sell_amount,
+                    'fee': expected_sell_amount * 0.0005,  # 매도 수수료
+                    'order_id': result.get('uuid', ''),
+                    'status': 'executed'
+                })
+                
                 # 주문 후 잠시 대기
                 print("⏳ 주문 처리 중... (3초 대기)")
                 time.sleep(3)
@@ -1043,22 +1087,92 @@ def execute_trading_decision(upbit, decision, investment_status):
                 print("\n📊 매도 후 계좌 상태:")
                 get_investment_status(upbit)
                 
+                # 거래 기록 저장 및 반성 생성
+                _save_trade_and_create_reflection(decision, execution_result, investment_status, market_data)
+                
                 return True
             else:
                 print("❌ 매도 주문 실패")
+                execution_result['status'] = 'failed'
                 return False
         except Exception as e:
             print(f"❌ 매도 주문 중 오류: {e}")
+            execution_result['status'] = 'error'
             return False
             
     elif decision['decision'] == 'hold':
         print("🟡 보유 신호 - 현재 포지션 유지")
         print("📈 추가 매수나 매도 없이 현재 상태를 유지합니다.")
+        
+        # 보유 상태도 기록 (반성 시스템을 위해)
+        execution_result.update({
+            'action': 'hold',
+            'status': 'executed'
+        })
+        
+        # 거래 기록 저장 및 반성 생성
+        _save_trade_and_create_reflection(decision, execution_result, investment_status, market_data)
+        
         return True
     
     else:
         print(f"❓ 알 수 없는 매매 신호: {decision['decision']}")
         return False
+
+def _save_trade_and_create_reflection(decision, execution_result, investment_status, market_data):
+    """
+    거래 기록 저장 및 즉시 반성 생성
+    """
+    try:
+        print("\n" + "=" * 50)
+        print("📊 거래 기록 저장 및 반성 생성")
+        print("=" * 50)
+        
+        # 거래 기록 저장
+        trade_saved = save_trade_record(decision, execution_result, investment_status, market_data)
+        if trade_saved:
+            print("✅ 거래 기록 저장 완료")
+        else:
+            print("❌ 거래 기록 저장 실패")
+        
+        # 시장 데이터 저장
+        if market_data:
+            market_saved = save_market_data_record(market_data)
+            if market_saved:
+                print("✅ 시장 데이터 저장 완료")
+            else:
+                print("❌ 시장 데이터 저장 실패")
+        
+        # 즉시 반성 생성 (거래가 실제로 실행된 경우에만)
+        if execution_result['status'] == 'executed' and execution_result['action'] != 'hold':
+            print("\n🤔 거래 반성 생성 중...")
+            
+            # 최근 거래 ID 조회 (실제 구현에서는 더 정확한 방법 필요)
+            from database.connection import get_db_connection
+            connection = get_db_connection()
+            if connection:
+                cursor = connection.cursor()
+                cursor.execute("SELECT MAX(id) as last_id FROM trades")
+                result = cursor.fetchone()
+                if result and result[0]:
+                    trade_id = result[0]
+                    
+                    # 즉시 반성 생성
+                    reflection_created = create_immediate_reflection(trade_id, decision, market_data or {})
+                    if reflection_created:
+                        print("✅ 즉시 반성 생성 완료")
+                    else:
+                        print("❌ 즉시 반성 생성 실패")
+                else:
+                    print("⚠️ 거래 ID를 찾을 수 없어 반성 생성을 건너뜁니다.")
+                cursor.close()
+            else:
+                print("❌ 데이터베이스 연결 실패로 반성 생성을 건너뜁니다.")
+        
+        print("=" * 50)
+        
+    except Exception as e:
+        print(f"❌ 거래 기록 및 반성 생성 중 오류: {e}")
 
 def main_trading_cycle_with_vision(upbit):
     """
@@ -1097,7 +1211,7 @@ def main_trading_cycle_with_vision(upbit):
             decision = ai_trading_decision_with_indicators(market_data)
         
         # 매매 실행
-        execution_result = execute_trading_decision(upbit, decision, investment_status)
+        execution_result = execute_trading_decision(upbit, decision, investment_status, market_data)
         
         if execution_result:
             print("매매 실행 완료")
@@ -1129,7 +1243,7 @@ def main_trading_cycle_with_indicators(upbit):
         decision = ai_trading_decision_with_indicators(market_data)
         
         # 매매 실행
-        execution_result = execute_trading_decision(upbit, decision, investment_status)
+        execution_result = execute_trading_decision(upbit, decision, investment_status, market_data)
         
         if execution_result:
             print("매매 실행 완료")

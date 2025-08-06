@@ -115,9 +115,97 @@ class DatabaseConnection:
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
             """
             
+            # 거래 반성 테이블
+            create_trading_reflections_table = """
+            CREATE TABLE IF NOT EXISTS trading_reflections (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                trade_id INT NOT NULL,
+                reflection_type ENUM('immediate', 'daily', 'weekly', 'monthly') NOT NULL,
+                performance_score DECIMAL(5, 4),
+                profit_loss DECIMAL(20, 2),
+                profit_loss_percentage DECIMAL(10, 4),
+                market_conditions JSON,
+                decision_quality_score DECIMAL(5, 4),
+                timing_score DECIMAL(5, 4),
+                risk_management_score DECIMAL(5, 4),
+                ai_analysis TEXT,
+                improvement_suggestions TEXT,
+                lessons_learned TEXT,
+                next_actions TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (trade_id) REFERENCES trades(id) ON DELETE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+            """
+            
+            # 성과 지표 테이블
+            create_performance_metrics_table = """
+            CREATE TABLE IF NOT EXISTS performance_metrics (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                period_type ENUM('daily', 'weekly', 'monthly') NOT NULL,
+                period_start DATETIME NOT NULL,
+                period_end DATETIME NOT NULL,
+                total_trades INT NOT NULL,
+                winning_trades INT NOT NULL,
+                losing_trades INT NOT NULL,
+                win_rate DECIMAL(5, 4),
+                total_profit_loss DECIMAL(20, 2),
+                total_profit_loss_percentage DECIMAL(10, 4),
+                max_drawdown DECIMAL(10, 4),
+                sharpe_ratio DECIMAL(10, 4),
+                average_trade_duration INT,
+                best_trade_profit DECIMAL(20, 2),
+                worst_trade_loss DECIMAL(20, 2),
+                market_condition_performance JSON,
+                strategy_performance JSON,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+            """
+            
+            # 학습 인사이트 테이블
+            create_learning_insights_table = """
+            CREATE TABLE IF NOT EXISTS learning_insights (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                insight_type ENUM('pattern', 'strategy', 'risk', 'timing', 'market') NOT NULL,
+                insight_title VARCHAR(200) NOT NULL,
+                insight_description TEXT NOT NULL,
+                confidence_level DECIMAL(5, 4),
+                supporting_data JSON,
+                applicable_conditions JSON,
+                action_items TEXT,
+                priority_level ENUM('low', 'medium', 'high', 'critical') DEFAULT 'medium',
+                status ENUM('discovered', 'implemented', 'validated', 'archived') DEFAULT 'discovered',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+            """
+            
+            # 전략 개선 이력 테이블
+            create_strategy_improvements_table = """
+            CREATE TABLE IF NOT EXISTS strategy_improvements (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                improvement_type ENUM('parameter', 'condition', 'timing', 'risk') NOT NULL,
+                old_value TEXT,
+                new_value TEXT,
+                reason TEXT,
+                expected_impact TEXT,
+                implementation_date DATETIME,
+                validation_period_days INT DEFAULT 30,
+                performance_before JSON,
+                performance_after JSON,
+                success_metric DECIMAL(5, 4),
+                status ENUM('proposed', 'implemented', 'validated', 'reverted') DEFAULT 'proposed',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+            """
+            
             cursor.execute(create_trades_table)
             cursor.execute(create_market_data_table)
             cursor.execute(create_system_logs_table)
+            cursor.execute(create_trading_reflections_table)
+            cursor.execute(create_performance_metrics_table)
+            cursor.execute(create_learning_insights_table)
+            cursor.execute(create_strategy_improvements_table)
             
             self.connection.commit()
             cursor.close()

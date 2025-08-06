@@ -8,6 +8,7 @@ from typing import Dict, Any, Optional
 from mysql.connector import Error
 import logging
 from .connection import get_db_connection
+from utils.json_cleaner import clean_json_data
 
 class TradeRecorder:
     """거래 기록 저장 클래스"""
@@ -45,8 +46,11 @@ class TradeRecorder:
             market_data_json = None
             if market_data:
                 try:
-                    market_data_json = json.dumps(market_data, ensure_ascii=False)
-                except:
+                    # NaN, Infinity 값 정리 후 JSON 변환
+                    cleaned_market_data = clean_json_data(market_data)
+                    market_data_json = json.dumps(cleaned_market_data, ensure_ascii=False)
+                except Exception as e:
+                    self.logger.error(f"시장 데이터 JSON 변환 오류: {e}")
                     market_data_json = None
             
             # 거래 기록 저장

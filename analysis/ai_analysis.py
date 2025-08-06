@@ -1,11 +1,10 @@
 """
 AI 분석 모듈
-OpenAI API를 사용하여 매매 결정을 수행합니다.
 """
 
 import json
 from datetime import datetime
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 from openai import OpenAI
 from .models import TradingDecision
 from config.settings import OPENAI_API_KEY
@@ -82,6 +81,170 @@ def create_market_analysis_data(daily_df, minute_df, current_price, orderbook, f
     }
     
     return analysis_data
+
+def analyze_market_sentiment(market_data: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    시장 심리 분석
+    
+    Args:
+        market_data: 시장 데이터
+        
+    Returns:
+        분석 결과
+    """
+    try:
+        client = OpenAI()
+        
+        # 시장 데이터 요약
+        current_price = market_data.get('current_price', 0)
+        fear_greed = market_data.get('fear_greed_index', {})
+        technical_indicators = market_data.get('technical_indicators', {})
+        
+        # 분석 요청 메시지
+        analysis_prompt = f"""
+        비트코인 시장 데이터를 분석하여 시장 심리를 평가해주세요.
+        
+        현재 가격: {current_price}
+        공포탐욕지수: {fear_greed}
+        기술적 지표: {technical_indicators}
+        
+        다음 형식으로 분석해주세요:
+        - 시장 심리: (extreme_fear, fear, neutral, greed, extreme_greed)
+        - 분석 근거: (상세한 분석 내용)
+        - 신뢰도: (0.0-1.0)
+        """
+        
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[
+                {"role": "system", "content": "당신은 비트코인 시장 분석 전문가입니다."},
+                {"role": "user", "content": analysis_prompt}
+            ],
+            max_tokens=500
+        )
+        
+        analysis_text = response.choices[0].message.content
+        
+        return {
+            'sentiment': 'neutral',  # 기본값
+            'analysis': analysis_text,
+            'confidence': 0.7,
+            'timestamp': '2024-01-01T00:00:00'
+        }
+        
+    except Exception as e:
+        return {
+            'sentiment': 'neutral',
+            'analysis': f'분석 중 오류 발생: {str(e)}',
+            'confidence': 0.0,
+            'timestamp': '2024-01-01T00:00:00'
+        }
+
+def analyze_trading_performance(trades_data: List[Dict[str, Any]]) -> Dict[str, Any]:
+    """
+    거래 성과 분석
+    
+    Args:
+        trades_data: 거래 데이터 리스트
+        
+    Returns:
+        분석 결과
+    """
+    try:
+        if not trades_data:
+            return {
+                'analysis': '분석할 거래 데이터가 없습니다.',
+                'recommendations': [],
+                'confidence': 0.0
+            }
+        
+        # 기본 통계 계산
+        total_trades = len(trades_data)
+        winning_trades = len([t for t in trades_data if t.get('profit_loss', 0) > 0])
+        losing_trades = len([t for t in trades_data if t.get('profit_loss', 0) < 0])
+        win_rate = winning_trades / total_trades if total_trades > 0 else 0
+        
+        analysis_text = f"""
+        거래 성과 분석:
+        - 총 거래 수: {total_trades}
+        - 승리 거래: {winning_trades}
+        - 패배 거래: {losing_trades}
+        - 승률: {win_rate:.2%}
+        """
+        
+        recommendations = []
+        if win_rate < 0.5:
+            recommendations.append("승률이 낮습니다. 매매 전략을 재검토하세요.")
+        if total_trades < 10:
+            recommendations.append("더 많은 거래 데이터가 필요합니다.")
+        
+        return {
+            'analysis': analysis_text,
+            'recommendations': recommendations,
+            'confidence': 0.8,
+            'statistics': {
+                'total_trades': total_trades,
+                'winning_trades': winning_trades,
+                'losing_trades': losing_trades,
+                'win_rate': win_rate
+            }
+        }
+        
+    except Exception as e:
+        return {
+            'analysis': f'분석 중 오류 발생: {str(e)}',
+            'recommendations': [],
+            'confidence': 0.0
+        }
+
+def generate_improvement_suggestions(performance_analysis: Dict[str, Any]) -> List[Dict[str, Any]]:
+    """
+    개선 제안 생성
+    
+    Args:
+        performance_analysis: 성과 분석 결과
+        
+    Returns:
+        개선 제안 리스트
+    """
+    suggestions = []
+    
+    try:
+        stats = performance_analysis.get('statistics', {})
+        win_rate = stats.get('win_rate', 0)
+        
+        if win_rate < 0.4:
+            suggestions.append({
+                'type': 'risk_management',
+                'title': '리스크 관리 강화',
+                'description': '승률이 낮으므로 리스크 관리 전략을 강화하세요.',
+                'priority': 'high'
+            })
+        
+        if win_rate < 0.5:
+            suggestions.append({
+                'type': 'strategy',
+                'title': '매매 전략 재검토',
+                'description': '현재 전략의 효과성을 재검토하고 개선하세요.',
+                'priority': 'medium'
+            })
+        
+        suggestions.append({
+            'type': 'monitoring',
+            'title': '지속적 모니터링',
+            'description': '시장 상황과 거래 성과를 지속적으로 모니터링하세요.',
+            'priority': 'low'
+        })
+        
+    except Exception as e:
+        suggestions.append({
+            'type': 'error',
+            'title': '분석 오류',
+            'description': f'분석 중 오류가 발생했습니다: {str(e)}',
+            'priority': 'critical'
+        })
+    
+    return suggestions
 
 def ai_trading_decision_with_indicators(market_data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
     """기술적 지표를 포함한 AI 매매 결정 함수"""

@@ -34,3 +34,6 @@ typing
 
 # 데이터베이스
 mysql-connector-python
+
+# 스케줄링
+schedule
