@@ -1,0 +1,25 @@
+2025-08-07 07:50:22 - gptbitcoin - INFO - ============================================================
+2025-08-07 07:50:22 - gptbitcoin - INFO - AI 매매 결정 결과
+2025-08-07 07:50:22 - gptbitcoin - INFO - ============================================================
+2025-08-07 07:50:22 - gptbitcoin - INFO - 결정: hold
+2025-08-07 07:50:22 - gptbitcoin - INFO - 신뢰도: 0.7
+2025-08-07 07:50:22 - gptbitcoin - INFO - 위험도: medium
+2025-08-07 07:50:22 - gptbitcoin - INFO - 이유: The Bitcoin market is currently showing neutral sentiment with the Fear and Greed Index at 54. The RSI is slightly above neutral at 55.1, indicating no strong overbought or oversold conditions. The MACD shows a positive value, suggesting mild bullish momentum, but the histogram indicates weakening momentum. Bollinger Bands show the price near the upper band, suggesting potential resistance. The news sentiment is slightly negative, which may add some bearish pressure. The chart analysis reveals that the price is trading within a range, with no clear breakout pattern. Volume is normal, indicating no significant buying or selling pressure. Overall, the market lacks strong directional bias, suggesting a hold position is prudent until clearer signals emerge.
+2025-08-07 07:50:22 - gptbitcoin - INFO - 예상 가격 범위: 158,000,000원 ~ 162,000,000원
+2025-08-07 07:50:22 - gptbitcoin - INFO - 주요 지표:
+2025-08-07 07:50:22 - gptbitcoin - INFO -   - RSI: neutral
+2025-08-07 07:50:22 - gptbitcoin - INFO -   - MACD: bullish
+2025-08-07 07:50:22 - gptbitcoin - INFO -   - 볼린저밴드: upper_band
+2025-08-07 07:50:22 - gptbitcoin - INFO -   - 트렌드 강도: neutral
+2025-08-07 07:50:22 - gptbitcoin - INFO -   - 시장 심리: neutral
+2025-08-07 07:50:22 - gptbitcoin - INFO -   - 뉴스 감정: negative
+2025-08-07 07:50:22 - gptbitcoin - INFO - 현재 가격: 160,180,000원
+2025-08-07 07:50:22 - gptbitcoin - INFO - 공포탐욕지수: 54 (Neutral)
+2025-08-07 07:50:22 - gptbitcoin - INFO - 뉴스 분석: 긍정 9개, 부정 13개, 중립 78개
+2025-08-07 07:50:22 - gptbitcoin - INFO - ============================================================
+2025-08-07 07:50:22 - gptbitcoin - INFO - ========================================
+2025-08-07 07:50:22 - gptbitcoin - INFO - 매매 실행 결과
+2025-08-07 07:50:22 - gptbitcoin - INFO - ========================================
+2025-08-07 07:50:22 - gptbitcoin - INFO - 결정: hold
+2025-08-07 07:50:22 - gptbitcoin - INFO - 성공 여부: 성공
+2025-08-07 07:50:22 - gptbitcoin - INFO - ========================================
