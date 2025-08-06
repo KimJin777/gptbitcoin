@@ -21,6 +21,7 @@ requests
 beautifulsoup4
 lxml
 bs4
+plotly
 
 # 로깅 및 유틸리티
 logging
@@ -31,9 +32,13 @@ json
 base64
 io
 typing
+streamlit
 
 # 데이터베이스
 mysql-connector-python
 
 # 스케줄링
 schedule
+streamlit
+plotly
+pandas
