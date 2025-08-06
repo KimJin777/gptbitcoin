@@ -1,0 +1,13 @@
+python-dotenv
+openai
+pyupbit
+ta
+requests
+pandas
+numpy
+selenium
+webdriver-manager
+beautifulsoup4
+lxml
+bs4
+Pillow
