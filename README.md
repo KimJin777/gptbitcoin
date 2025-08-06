@@ -19,6 +19,7 @@
 ### 🤖 AI 기반 매매 결정
 - **GPT-4o** 기반 지능형 매매 결정
 - **GPT Vision API** 차트 이미지 분석
+- **Structured Outputs** 안정적인 JSON 응답
 - **다중 지표 종합 분석**
 - **리스크 관리** 및 보수적 접근
 
@@ -85,6 +86,16 @@ python screenshot_capture.py
 python test_optimized_vision.py
 ```
 
+### 이미지 최적화 기능 테스트
+```bash
+python test_image_optimization.py
+```
+
+### Structured Outputs 테스트
+```bash
+python test_structured_outputs.py
+```
+
 ## 📊 시스템 구성
 
 ### 1. 데이터 수집 모듈
@@ -143,10 +154,20 @@ python test_optimized_vision.py
 - **전송 속도 향상**: 최적화된 이미지로 빠른 API 호출
 - **API 비용 절약**: 작은 파일 크기로 토큰 사용량 감소
 - **안정성 향상**: 네트워크 오류 위험 감소
-| 26-45 | Fear | 신중한 접근 |
-| 46-55 | Neutral | 균형잡힌 접근 |
-| 56-75 | Greed | 매도 신호 주의 |
-| 76-100 | Extreme Greed | 매도 기회 탐색 |
+
+## 🔧 Structured Outputs 기능
+
+### 구조화된 응답 모델
+- **TradingDecision**: 매매 결정, 신뢰도, 위험도, 예상 가격 범위
+- **KeyIndicators**: RSI, MACD, 볼린저 밴드, 트렌드 강도, 시장 심리, 뉴스 감정
+- **ChartAnalysis**: 가격 액션, 지지선/저항선, 차트 패턴, 거래량 분석
+- **ExpectedPriceRange**: 예상 최저/최고 가격
+
+### Structured Outputs 장점
+- **안정적인 JSON 응답**: Pydantic 모델로 타입 안전성 보장
+- **일관된 데이터 구조**: 항상 동일한 필드와 형식
+- **오류 처리 강화**: 잘못된 응답 구조 자동 감지
+- **개발 효율성**: IDE 자동완성 및 타입 힌트 지원
 
 ### 뉴스 감정 분석
 - **긍정적 뉴스**: 상승 압력 예상

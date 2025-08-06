@@ -10,6 +10,8 @@ import time
 import numpy as np
 import requests
 import base64
+from typing import Optional, List, Dict, Any
+from pydantic import BaseModel, Field
 
 # TA 라이브러리 import
 import ta
@@ -22,6 +24,35 @@ from openai import OpenAI
 
 # 스크린샷 캡처 모듈 import
 from screenshot_capture import capture_upbit_screenshot
+
+# Structured Output Models
+class KeyIndicators(BaseModel):
+    rsi_signal: str = Field(description="RSI 신호: overbought, oversold, neutral")
+    macd_signal: str = Field(description="MACD 신호: bullish, bearish, neutral")
+    bb_signal: str = Field(description="볼린저 밴드 신호: upper_band, lower_band, middle")
+    trend_strength: str = Field(description="트렌드 강도: strong, weak, neutral")
+    market_sentiment: str = Field(description="시장 심리: extreme_fear, fear, neutral, greed, extreme_greed")
+    news_sentiment: str = Field(description="뉴스 감정: positive, negative, neutral")
+
+class ChartAnalysis(BaseModel):
+    price_action: str = Field(description="가격 액션: bullish, bearish, neutral")
+    support_level: Optional[str] = Field(description="지지선 가격 레벨")
+    resistance_level: Optional[str] = Field(description="저항선 가격 레벨")
+    chart_pattern: Optional[str] = Field(description="차트 패턴 이름")
+    volume_analysis: str = Field(description="거래량 분석: high, low, normal")
+
+class ExpectedPriceRange(BaseModel):
+    min: float = Field(description="예상 최저 가격")
+    max: float = Field(description="예상 최고 가격")
+
+class TradingDecision(BaseModel):
+    decision: str = Field(description="매매 결정: buy, sell, hold")
+    reason: str = Field(description="상세한 기술적 분석 설명 (차트 분석, 지표 신호, 시장 심리, 뉴스 감정 포함)")
+    confidence: float = Field(description="신뢰도 (0.0-1.0)", ge=0.0, le=1.0)
+    risk_level: str = Field(description="위험도: low, medium, high")
+    expected_price_range: ExpectedPriceRange = Field(description="예상 가격 범위")
+    key_indicators: KeyIndicators = Field(description="주요 지표 신호")
+    chart_analysis: Optional[ChartAnalysis] = Field(description="차트 분석 (Vision API 사용시)")
 
 def calculate_technical_indicators(df):
     """
@@ -308,17 +339,24 @@ def get_market_data_with_indicators():
     
     # 오더북 정보
     orderbook = pyupbit.get_orderbook("KRW-BTC")
-    if orderbook and len(orderbook) > 0 and len(orderbook[0]['orderbook_units']) > 0:
-        ask_price = orderbook[0]['orderbook_units'][0]['ask_price']  # 최우선 매도호가
-        bid_price = orderbook[0]['orderbook_units'][0]['bid_price']  # 최우선 매수호가
-        if ask_price is not None and bid_price is not None:
-            spread = ask_price - bid_price
-            spread_percent = (spread / ask_price) * 100
-            print(f"최우선 매도호가: {ask_price:,}원")
-            print(f"최우선 매수호가: {bid_price:,}원")
-            print(f"스프레드: {spread:,}원 ({spread_percent:.3f}%)")
-        else:
-            print("오더북 가격 정보 조회 실패")
+    if orderbook and isinstance(orderbook, dict):
+        try:
+            if 'orderbook_units' in orderbook and len(orderbook['orderbook_units']) > 0:
+                ask_price = orderbook['orderbook_units'][0]['ask_price']  # 최우선 매도호가
+                bid_price = orderbook['orderbook_units'][0]['bid_price']  # 최우선 매수호가
+                if ask_price is not None and bid_price is not None:
+                    spread = ask_price - bid_price
+                    spread_percent = (spread / ask_price) * 100
+                    print(f"최우선 매도호가: {ask_price:,}원")
+                    print(f"최우선 매수호가: {bid_price:,}원")
+                    print(f"스프레드: {spread:,}원 ({spread_percent:.3f}%)")
+                else:
+                    print("오더북 가격 정보 조회 실패")
+            else:
+                print("오더북 단위 정보 조회 실패")
+        except (KeyError, IndexError, TypeError) as e:
+            print(f"오더북 데이터 구조 오류: {e}")
+            print("오더북 정보 조회 실패")
     else:
         print("오더북 정보 조회 실패")
     
@@ -349,100 +387,103 @@ def get_investment_status(upbit):
     """
     print("=== 투자 상태 조회 중 ===")
     
-    # 전체 잔고 조회
     try:
+        # 전체 잔고 조회
         balances = upbit.get_balances()
         if balances is None:
-            balances = []
-    except Exception as e:
-        print(f"전체 잔고 조회 실패: {e}")
-        balances = []
-    
-    # KRW 잔고
-    try:
-        krw_balance = upbit.get_balance("KRW")
-        if krw_balance is not None and krw_balance > 0:
-            print(f"보유 현금: {krw_balance:,.2f}원")
-        else:
-            print("보유 현금: 0원")
-            krw_balance = 0
-    except Exception as e:
-        print(f"보유 현금 조회 실패: {e}")
+            print("❌ 잔고 조회 실패")
+            return None
+        
+        # KRW 잔고
         krw_balance = 0
-    
-    # BTC 잔고
-    try:
-        btc_balance = upbit.get_balance("KRW-BTC")
-        if btc_balance is not None and btc_balance > 0:
-            print(f"보유 비트코인: {btc_balance:.8f} BTC")
-        else:
-            print("보유 비트코인: 0 BTC")
-            btc_balance = 0
-    except Exception as e:
-        print(f"보유 비트코인 조회 실패: {e}")
         btc_balance = 0
-    
-    # 현재 비트코인 가격
-    current_price = pyupbit.get_current_price("KRW-BTC")
-    if current_price is None:
-        print("현재 비트코인 가격 조회 실패")
-        current_price = 0
-    
-    # 비트코인 평가금액 및 투자 성과 분석
-    if btc_balance > 0:
-        btc_value = btc_balance * current_price
-        print(f"비트코인 평가금액: {btc_value:,.2f}원")
+        btc_avg_price = 0
         
-        # 총 자산
-        total_assets = krw_balance + btc_value
-        print(f"총 자산: {total_assets:,.2f}원")
-        
-        # 비트코인 비중
-        btc_ratio = (btc_value / total_assets) * 100
-        print(f"비트코인 비중: {btc_ratio:.2f}%")
-        
-        # 평균 매수가 계산 (업비트 API에서 제공하는 정보 활용)
-        try:
-            # 전체 잔고 정보에서 BTC 평균 매수가 조회
+        # balances가 리스트인 경우
+        if isinstance(balances, list):
             for balance in balances:
-                if balance['currency'] == 'BTC':
-                    avg_buy_price = float(balance['avg_buy_price'])
-                    if avg_buy_price > 0:
-                        print(f"평균 매수가: {avg_buy_price:,.0f}원")
-                        
-                        # 수익률 계산
-                        profit_loss = current_price - avg_buy_price
-                        profit_loss_percent = (profit_loss / avg_buy_price) * 100
-                        
-                        print(f"현재 수익/손실: {profit_loss:,.0f}원 ({profit_loss_percent:+.2f}%)")
-                        
-                        # 총 투자금액 (평균 매수가 * 보유 수량)
-                        total_investment = avg_buy_price * btc_balance
-                        print(f"총 투자금액: {total_investment:,.0f}원")
-                        
-                        # 총 수익/손실
-                        total_profit_loss = btc_value - total_investment
-                        total_profit_loss_percent = (total_profit_loss / total_investment) * 100
-                        print(f"총 수익/손실: {total_profit_loss:,.0f}원 ({total_profit_loss_percent:+.2f}%)")
-                        
-                        # 투자 성과 등급
-                        if total_profit_loss_percent >= 20:
-                            performance_grade = "A+ (우수)"
-                        elif total_profit_loss_percent >= 10:
-                            performance_grade = "A (양호)"
-                        elif total_profit_loss_percent >= 0:
-                            performance_grade = "B (보통)"
-                        elif total_profit_loss_percent >= -10:
-                            performance_grade = "C (주의)"
-                        else:
-                            performance_grade = "D (위험)"
-                        
-                        print(f"투자 성과 등급: {performance_grade}")
-                        break
-        except Exception as e:
-            print(f"평균 매수가 조회 실패: {e}")
-    else:
-        print("보유 비트코인이 없습니다.")
+                if isinstance(balance, dict):
+                    currency = balance.get('currency', '')
+                    if currency == 'KRW':
+                        krw_balance = float(balance.get('balance', 0))
+                    elif currency == 'BTC':
+                        btc_balance = float(balance.get('balance', 0))
+                        btc_avg_price = float(balance.get('avg_buy_price', 0))
+        # balances가 딕셔너리인 경우
+        elif isinstance(balances, dict):
+            for currency, balance_data in balances.items():
+                if currency == 'KRW':
+                    krw_balance = float(balance_data.get('balance', 0))
+                elif currency == 'BTC':
+                    btc_balance = float(balance_data.get('balance', 0))
+                    btc_avg_price = float(balance_data.get('avg_buy_price', 0))
+        
+        print(f"💰 보유 현금: {krw_balance:,.2f}원")
+        print(f"₿ 보유 비트코인: {btc_balance:.8f} BTC")
+        if btc_avg_price > 0:
+            print(f"📈 평균 매수가: {btc_avg_price:,.0f}원")
+        
+        # 현재 비트코인 가격
+        current_price = pyupbit.get_current_price("KRW-BTC")
+        if current_price:
+            print(f"📊 현재 비트코인 가격: {current_price:,.0f}원")
+            
+            # 비트코인 평가금액
+            if btc_balance > 0:
+                btc_value = btc_balance * current_price
+                print(f"💎 비트코인 평가금액: {btc_value:,.2f}원")
+                
+                # 총 자산
+                total_assets = krw_balance + btc_value
+                print(f"🏦 총 자산: {total_assets:,.2f}원")
+                
+                # 비트코인 비중
+                btc_ratio = (btc_value / total_assets) * 100
+                print(f"📊 비트코인 비중: {btc_ratio:.2f}%")
+                
+                # 수익률 계산
+                if btc_avg_price > 0:
+                    profit_loss = current_price - btc_avg_price
+                    profit_loss_percent = (profit_loss / btc_avg_price) * 100
+                    print(f"📈 수익/손실: {profit_loss:,.0f}원 ({profit_loss_percent:+.2f}%)")
+                    
+                    # 총 투자금액 (평균 매수가 * 보유 수량)
+                    total_investment = btc_avg_price * btc_balance
+                    print(f"💼 총 투자금액: {total_investment:,.0f}원")
+                    
+                    # 총 수익/손실
+                    total_profit_loss = btc_value - total_investment
+                    total_profit_loss_percent = (total_profit_loss / total_investment) * 100
+                    print(f"📊 총 수익/손실: {total_profit_loss:,.0f}원 ({total_profit_loss_percent:+.2f}%)")
+                    
+                    # 투자 성과 등급
+                    if total_profit_loss_percent >= 20:
+                        performance_grade = "A+ (우수)"
+                    elif total_profit_loss_percent >= 10:
+                        performance_grade = "A (양호)"
+                    elif total_profit_loss_percent >= 0:
+                        performance_grade = "B (보통)"
+                    elif total_profit_loss_percent >= -10:
+                        performance_grade = "C (주의)"
+                    else:
+                        performance_grade = "D (위험)"
+                    
+                    print(f"🏆 투자 성과 등급: {performance_grade}")
+        else:
+            print("❌ 현재 비트코인 가격 조회 실패")
+            current_price = 0
+        
+        return {
+            'krw_balance': krw_balance,
+            'btc_balance': btc_balance,
+            'btc_avg_price': btc_avg_price,
+            'current_price': current_price
+        }
+        
+    except Exception as e:
+        print(f"❌ 계좌 상태 확인 실패: {e}")
+        print(f"🔍 오류 상세: {type(e).__name__}")
+        return None
     
     # 미체결 주문 조회
     try:
@@ -622,7 +663,7 @@ def create_market_analysis_data_with_indicators(daily_df, minute_df, current_pri
         "technical_indicators": technical_summary,
         "fear_greed_index": fear_greed_data,
         "news_analysis": news_summary,
-        "orderbook": orderbook[0] if orderbook else None,
+        "orderbook": orderbook if orderbook and isinstance(orderbook, dict) else None,
         "analysis_time": datetime.now().isoformat()
     }
     
@@ -630,7 +671,7 @@ def create_market_analysis_data_with_indicators(daily_df, minute_df, current_pri
 
 def ai_trading_decision_with_indicators(market_data):
     """
-    기술적 지표를 포함한 AI 매매 결정 함수
+    기술적 지표를 포함한 AI 매매 결정 함수 (Structured Output 사용)
     """
     print("=== AI 매매 결정 분석 중 (기술적 지표 포함) ===")
     
@@ -681,70 +722,72 @@ def ai_trading_decision_with_indicators(market_data):
     Market sentiment from Fear and Greed Index
     News sentiment impact on market psychology
     
-    Provide your decision in JSON format with the following structure:
-    {
-        "decision": "buy|sell|hold",
-        "reason": "detailed technical analysis explanation including indicator signals, market sentiment, and news sentiment",
-        "confidence": 0.0-1.0,
-        "risk_level": "low|medium|high",
-        "expected_price_range": {"min": price, "max": price},
-        "key_indicators": {
-            "rsi_signal": "overbought|oversold|neutral",
-            "macd_signal": "bullish|bearish|neutral", 
-            "bb_signal": "upper_band|lower_band|middle",
-            "trend_strength": "strong|weak|neutral",
-            "market_sentiment": "extreme_fear|fear|neutral|greed|extreme_greed",
-            "news_sentiment": "positive|negative|neutral"
-        }
-    }
-    
     Be conservative and consider risk management in your recommendations.
     Use technical indicators to confirm signals rather than relying on single indicators.
     Consider market sentiment from Fear and Greed Index for contrarian opportunities.
     Consider news sentiment for additional market psychology insights.
+    
+    Provide your analysis in JSON format using the structured output function.
     """
     
-    response = client.chat.completions.create(
-        model="gpt-4o",
-        messages=[
-            {
-                "role": "system",
-                "content": system_message
-            },
-            {
-                "role": "user",
-                "content": f"Please analyze this Bitcoin market data with technical indicators and provide trading decision: {json.dumps(market_data, default=str)}"
-            }
-        ],
-        response_format={"type": "json_object"},
-        temperature=0.3  # 더 보수적인 결정을 위해 낮은 temperature 사용
-    )
-    
-    result = response.choices[0].message.content
-    result_json = json.loads(result)
-    
-    print(f"AI 결정: {result_json['decision']}")
-    print(f"신뢰도: {result_json['confidence']:.2f}")
-    print(f"위험도: {result_json['risk_level']}")
-    print(f"예상 가격 범위: {result_json['expected_price_range']['min']:,}원 ~ {result_json['expected_price_range']['max']:,}원")
-    
-    # 주요 지표 신호 출력
-    if 'key_indicators' in result_json:
-        indicators = result_json['key_indicators']
-        print(f"RSI 신호: {indicators.get('rsi_signal', 'N/A')}")
-        print(f"MACD 신호: {indicators.get('macd_signal', 'N/A')}")
-        print(f"볼린저밴드 신호: {indicators.get('bb_signal', 'N/A')}")
-        print(f"트렌드 강도: {indicators.get('trend_strength', 'N/A')}")
-        print(f"시장 심리: {indicators.get('market_sentiment', 'N/A')}")
-        print(f"뉴스 감정: {indicators.get('news_sentiment', 'N/A')}")
-    
-    print(f"분석 근거: {result_json['reason']}")
-    
-    return result_json
+    try:
+        response = client.chat.completions.create(
+            model="gpt-4o",
+            messages=[
+                {
+                    "role": "system",
+                    "content": system_message
+                },
+                {
+                    "role": "user",
+                    "content": f"Please analyze this Bitcoin market data with technical indicators and provide trading decision: {json.dumps(market_data, default=str)}"
+                }
+            ],
+            response_format={"type": "json_object"},
+            temperature=0.3,  # 더 보수적인 결정을 위해 낮은 temperature 사용
+            tools=[{
+                "type": "function",
+                "function": {
+                    "name": "get_trading_decision",
+                    "description": "비트코인 매매 결정을 위한 구조화된 출력",
+                    "parameters": TradingDecision.model_json_schema()
+                }
+            }],
+            tool_choice={"type": "function", "function": {"name": "get_trading_decision"}}
+        )
+        
+        # Structured output 파싱
+        tool_calls = response.choices[0].message.tool_calls
+        if tool_calls and len(tool_calls) > 0:
+            arguments = json.loads(tool_calls[0].function.arguments)
+            decision = TradingDecision(**arguments)
+            
+            # 결과 출력
+            print(f"📈 AI 결정: {decision.decision}")
+            print(f"🎯 신뢰도: {decision.confidence}")
+            print(f"⚠️ 위험도: {decision.risk_level}")
+            print(f"💰 예상 가격 범위: {decision.expected_price_range.min:,.0f}원 ~ {decision.expected_price_range.max:,.0f}원")
+            print(f"📊 주요 지표:")
+            print(f"   - RSI 신호: {decision.key_indicators.rsi_signal}")
+            print(f"   - MACD 신호: {decision.key_indicators.macd_signal}")
+            print(f"   - 볼린저밴드 신호: {decision.key_indicators.bb_signal}")
+            print(f"   - 트렌드 강도: {decision.key_indicators.trend_strength}")
+            print(f"   - 시장 심리: {decision.key_indicators.market_sentiment}")
+            print(f"   - 뉴스 감정: {decision.key_indicators.news_sentiment}")
+            print(f"📝 분석 이유: {decision.reason}")
+            
+            return decision.model_dump()
+        else:
+            print("❌ Structured output 파싱 실패")
+            return None
+            
+    except Exception as e:
+        print(f"❌ AI 분석 중 오류 발생: {e}")
+        return None
 
 def ai_trading_decision_with_vision(market_data, chart_image_base64=None):
     """
-    Vision API를 사용한 AI 매매 결정 함수 (차트 이미지 포함)
+    Vision API를 사용한 AI 매매 결정 함수 (차트 이미지 포함, Structured Output 사용)
     """
     print("=== AI 매매 결정 분석 중 (Vision API 포함) ===")
     
@@ -792,156 +835,230 @@ def ai_trading_decision_with_vision(market_data, chart_image_base64=None):
     - Neutral news sentiment: Balanced market sentiment
     - Consider news sentiment in combination with technical indicators for confirmation
     
-    Provide your decision in JSON format with the following structure:
-    {
-        "decision": "buy|sell|hold",
-        "reason": "detailed technical analysis explanation including chart analysis, indicator signals, market sentiment, and news sentiment",
-        "confidence": 0.0-1.0,
-        "risk_level": "low|medium|high",
-        "expected_price_range": {"min": price, "max": price},
-        "key_indicators": {
-            "rsi_signal": "overbought|oversold|neutral",
-            "macd_signal": "bullish|bearish|neutral", 
-            "bb_signal": "upper_band|lower_band|middle",
-            "trend_strength": "strong|weak|neutral",
-            "market_sentiment": "extreme_fear|fear|neutral|greed|extreme_greed",
-            "news_sentiment": "positive|negative|neutral"
-        },
-        "chart_analysis": {
-            "price_action": "bullish|bearish|neutral",
-            "support_level": "price_level",
-            "resistance_level": "price_level",
-            "chart_pattern": "pattern_name_or_none",
-            "volume_analysis": "high|low|normal"
-        }
-    }
-    
     Be conservative and consider risk management in your recommendations.
     Use technical indicators to confirm signals rather than relying on single indicators.
     Consider market sentiment from Fear and Greed Index for contrarian opportunities.
     Consider news sentiment for additional market psychology insights.
+    
+    Provide your analysis in JSON format using the structured output function.
     """
     
-    # 메시지 구성
-    messages = [
-        {
-            "role": "system",
-            "content": system_message
-        }
-    ]
-    
-    # 차트 이미지가 있는 경우 Vision API 사용
-    if chart_image_base64:
-        user_content = [
+    try:
+        # 메시지 구성
+        messages = [
             {
-                "type": "text",
-                "text": f"Please analyze this Bitcoin market data with technical indicators and the provided chart image to provide trading decision: {json.dumps(market_data, default=str)}"
-            },
-            {
-                "type": "image_url",
-                "image_url": {
-                    "url": f"data:image/png;base64,{chart_image_base64}"
-                }
+                "role": "system",
+                "content": system_message
             }
         ]
-    else:
-        # 이미지가 없는 경우 기존 방식 사용
-        user_content = f"Please analyze this Bitcoin market data with technical indicators and provide trading decision: {json.dumps(market_data, default=str)}"
-    
-    messages.append({
-        "role": "user",
-        "content": user_content
-    })
-    
-    response = client.chat.completions.create(
-        model="gpt-4o",
-        messages=messages,
-        response_format={"type": "json_object"},
-        temperature=0.3  # 더 보수적인 결정을 위해 낮은 temperature 사용
-    )
-    
-    result = response.choices[0].message.content
-    result_json = json.loads(result)
-    
-    print(f"AI 결정: {result_json['decision']}")
-    print(f"신뢰도: {result_json['confidence']:.2f}")
-    print(f"위험도: {result_json['risk_level']}")
-    print(f"예상 가격 범위: {result_json['expected_price_range']['min']:,}원 ~ {result_json['expected_price_range']['max']:,}원")
-    
-    # 주요 지표 신호 출력
-    if 'key_indicators' in result_json:
-        indicators = result_json['key_indicators']
-        print(f"RSI 신호: {indicators.get('rsi_signal', 'N/A')}")
-        print(f"MACD 신호: {indicators.get('macd_signal', 'N/A')}")
-        print(f"볼린저밴드 신호: {indicators.get('bb_signal', 'N/A')}")
-        print(f"트렌드 강도: {indicators.get('trend_strength', 'N/A')}")
-        print(f"시장 심리: {indicators.get('market_sentiment', 'N/A')}")
-        print(f"뉴스 감정: {indicators.get('news_sentiment', 'N/A')}")
-    
-    # 차트 분석 결과 출력
-    if 'chart_analysis' in result_json:
-        chart_analysis = result_json['chart_analysis']
-        print(f"가격 행동: {chart_analysis.get('price_action', 'N/A')}")
-        print(f"지지선: {chart_analysis.get('support_level', 'N/A')}")
-        print(f"저항선: {chart_analysis.get('resistance_level', 'N/A')}")
-        print(f"차트 패턴: {chart_analysis.get('chart_pattern', 'N/A')}")
-        print(f"거래량 분석: {chart_analysis.get('volume_analysis', 'N/A')}")
-    
-    print(f"분석 근거: {result_json['reason']}")
-    
-    return result_json
+        
+        # 차트 이미지가 있는 경우 Vision API 사용
+        if chart_image_base64:
+            user_content = [
+                {
+                    "type": "text",
+                    "text": f"Please analyze this Bitcoin market data with technical indicators and the provided chart image to provide trading decision: {json.dumps(market_data, default=str)}"
+                },
+                {
+                    "type": "image_url",
+                    "image_url": {
+                        "url": f"data:image/png;base64,{chart_image_base64}"
+                    }
+                }
+            ]
+        else:
+            # 이미지가 없는 경우 기존 방식 사용
+            user_content = f"Please analyze this Bitcoin market data with technical indicators and provide trading decision: {json.dumps(market_data, default=str)}"
+        
+        messages.append({"role": "user", "content": user_content})
+        
+        response = client.chat.completions.create(
+            model="gpt-4o",
+            messages=messages,
+            response_format={"type": "json_object"},
+            temperature=0.3,
+            tools=[{
+                "type": "function",
+                "function": {
+                    "name": "get_trading_decision_with_vision",
+                    "description": "비트코인 매매 결정을 위한 구조화된 출력 (Vision API 포함)",
+                    "parameters": TradingDecision.model_json_schema()
+                }
+            }],
+            tool_choice={"type": "function", "function": {"name": "get_trading_decision_with_vision"}}
+        )
+        
+        # Structured output 파싱
+        tool_calls = response.choices[0].message.tool_calls
+        if tool_calls and len(tool_calls) > 0:
+            arguments = json.loads(tool_calls[0].function.arguments)
+            decision = TradingDecision(**arguments)
+            
+            # 결과 출력
+            print(f"📈 AI 결정: {decision.decision}")
+            print(f"🎯 신뢰도: {decision.confidence}")
+            print(f"⚠️ 위험도: {decision.risk_level}")
+            print(f"💰 예상 가격 범위: {decision.expected_price_range.min:,.0f}원 ~ {decision.expected_price_range.max:,.0f}원")
+            print(f"📊 주요 지표:")
+            print(f"   - RSI 신호: {decision.key_indicators.rsi_signal}")
+            print(f"   - MACD 신호: {decision.key_indicators.macd_signal}")
+            print(f"   - 볼린저밴드 신호: {decision.key_indicators.bb_signal}")
+            print(f"   - 트렌드 강도: {decision.key_indicators.trend_strength}")
+            print(f"   - 시장 심리: {decision.key_indicators.market_sentiment}")
+            print(f"   - 뉴스 감정: {decision.key_indicators.news_sentiment}")
+            
+            if decision.chart_analysis:
+                print(f"📊 차트 분석:")
+                print(f"   - 가격 액션: {decision.chart_analysis.price_action}")
+                print(f"   - 지지선: {decision.chart_analysis.support_level}")
+                print(f"   - 저항선: {decision.chart_analysis.resistance_level}")
+                print(f"   - 차트 패턴: {decision.chart_analysis.chart_pattern}")
+                print(f"   - 거래량 분석: {decision.chart_analysis.volume_analysis}")
+            
+            print(f"📝 분석 이유: {decision.reason}")
+            
+            return decision.model_dump()
+        else:
+            print("❌ Structured output 파싱 실패")
+            return None
+            
+    except Exception as e:
+        print(f"❌ AI 분석 중 오류 발생: {e}")
+        return None
 
 def execute_trading_decision(upbit, decision, investment_status):
     """
     AI 결정에 따른 매매 실행
     """
-    print("=== 매매 실행 중 ===")
+    print("=" * 50)
+    print("🔄 매매 실행 중")
+    print("=" * 50)
     
-    krw_balance = investment_status['krw_balance']
-    btc_balance = investment_status['btc_balance']
-    current_price = investment_status['current_price']
+    if investment_status is None:
+        print("❌ 투자 상태 정보가 없어 매매를 건너뜁니다.")
+        return False
+    
+    krw_balance = investment_status.get('krw_balance', 0)
+    btc_balance = investment_status.get('btc_balance', 0)
+    current_price = investment_status.get('current_price', 0)
+    
+    print(f"💰 보유 현금: {krw_balance:,.2f}원")
+    print(f"₿ 보유 비트코인: {btc_balance:.8f} BTC")
+    print(f"📊 현재 가격: {current_price:,.0f}원")
     
     if decision['decision'] == 'buy':
-        print("매수 신호 감지")
+        print("🟢 매수 신호 감지")
         
-        if krw_balance * 0.9995 > 5000:  # 최소 거래금액 확인
-            buy_amount = krw_balance * 0.9995  # 수수료 고려
-            print(f"매수 실행: {buy_amount:,.2f}원")
-            
-            try:
-                result = upbit.buy_market_order("KRW-BTC", buy_amount)
-                print(f"매수 주문 결과: {result}")
+        # 최소 거래금액 확인 (5,000원)
+        min_trade_amount = 5000
+        if krw_balance < min_trade_amount:
+            print(f"❌ 보유 현금이 부족하여 매수 건너뜀")
+            print(f"   필요 금액: {min_trade_amount:,}원")
+            print(f"   보유 현금: {krw_balance:,.2f}원")
+            return False
+        
+        # 매수 금액 계산 (전체 현금의 95% 사용, 수수료 고려)
+        buy_amount = krw_balance * 0.95
+        if buy_amount < min_trade_amount:
+            buy_amount = min_trade_amount
+        
+        print(f"💰 매수 금액: {buy_amount:,.2f}원")
+        
+        # 수수료 계산 (0.05%)
+        fee_rate = 0.0005
+        fee_amount = buy_amount * fee_rate
+        actual_buy_amount = buy_amount - fee_amount
+        
+        print(f"💸 수수료: {fee_amount:,.2f}원 (0.05%)")
+        print(f"📦 실제 구매 금액: {actual_buy_amount:,.2f}원")
+        
+        # 예상 구매 수량
+        if current_price > 0:
+            expected_btc = actual_buy_amount / current_price
+            print(f"📊 예상 구매 수량: {expected_btc:.8f} BTC")
+        
+        # 매수 실행
+        print(f"\n🚀 {buy_amount:,.2f}원 비트코인 매수를 실행합니다...")
+        print("⚠️ 실제 거래가 발생합니다!")
+        
+        try:
+            result = upbit.buy_market_order("KRW-BTC", buy_amount)
+            if result:
+                print("✅ 매수 주문 성공!")
+                print(f"📋 주문 결과: {result}")
+                
+                # 주문 후 잠시 대기
+                print("⏳ 주문 처리 중... (3초 대기)")
+                time.sleep(3)
+                
+                # 매수 후 계좌 상태 재확인
+                print("\n📊 매수 후 계좌 상태:")
+                get_investment_status(upbit)
+                
                 return True
-            except Exception as e:
-                print(f"매수 주문 실패: {e}")
+            else:
+                print("❌ 매수 주문 실패")
                 return False
-        else:
-            print("보유 현금이 부족하여 매수 건너뜀")
+        except Exception as e:
+            print(f"❌ 매수 주문 중 오류: {e}")
             return False
             
     elif decision['decision'] == 'sell':
-        print("매도 신호 감지")
+        print("🔴 매도 신호 감지")
         
-        if btc_balance * 0.9995 > 5000 / current_price:  # 최소 거래금액 확인
-            sell_amount = btc_balance * 0.9995  # 수수료 고려
-            print(f"매도 실행: {sell_amount:.8f} BTC")
-            
-            try:
-                result = upbit.sell_market_order("KRW-BTC", sell_amount)
-                print(f"매도 주문 결과: {result}")
+        # 최소 거래금액 확인 (5,000원)
+        min_trade_amount = 5000
+        if btc_balance * current_price < min_trade_amount:
+            print(f"❌ 보유 비트코인이 부족하여 매도 건너뜀")
+            print(f"   필요 금액: {min_trade_amount:,}원")
+            print(f"   보유 비트코인 가치: {btc_balance * current_price:,.2f}원")
+            return False
+        
+        # 매도 수량 계산 (전체 비트코인의 95% 매도, 수수료 고려)
+        sell_amount = btc_balance * 0.95
+        if sell_amount * current_price < min_trade_amount:
+            sell_amount = btc_balance  # 전체 매도
+        
+        print(f"₿ 매도 수량: {sell_amount:.8f} BTC")
+        
+        # 예상 매도 금액
+        expected_sell_amount = sell_amount * current_price
+        print(f"💰 예상 매도 금액: {expected_sell_amount:,.2f}원")
+        
+        # 매도 실행
+        print(f"\n🚀 {sell_amount:.8f} BTC 비트코인 매도를 실행합니다...")
+        print("⚠️ 실제 거래가 발생합니다!")
+        
+        try:
+            result = upbit.sell_market_order("KRW-BTC", sell_amount)
+            if result:
+                print("✅ 매도 주문 성공!")
+                print(f"📋 주문 결과: {result}")
+                
+                # 주문 후 잠시 대기
+                print("⏳ 주문 처리 중... (3초 대기)")
+                time.sleep(3)
+                
+                # 매도 후 계좌 상태 재확인
+                print("\n📊 매도 후 계좌 상태:")
+                get_investment_status(upbit)
+                
                 return True
-            except Exception as e:
-                print(f"매도 주문 실패: {e}")
+            else:
+                print("❌ 매도 주문 실패")
                 return False
-        else:
-            print("보유 비트코인이 부족하여 매도 건너뜀")
+        except Exception as e:
+            print(f"❌ 매도 주문 중 오류: {e}")
             return False
             
     elif decision['decision'] == 'hold':
-        print("보유 신호 - 현재 포지션 유지")
+        print("🟡 보유 신호 - 현재 포지션 유지")
+        print("📈 추가 매수나 매도 없이 현재 상태를 유지합니다.")
         return True
     
-    return False
+    else:
+        print(f"❓ 알 수 없는 매매 신호: {decision['decision']}")
+        return False
 
 def main_trading_cycle_with_vision(upbit):
     """
