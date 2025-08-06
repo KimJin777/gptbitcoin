@@ -1,0 +1,51 @@
+2025-08-06 17:58:15 - gptbitcoin - ERROR - 메인 트레이딩 사이클 오류: not enough values to unpack (expected 6, got 5)
+2025-08-06 18:02:36 - gptbitcoin - INFO - ============================================================
+2025-08-06 18:02:36 - gptbitcoin - INFO - AI 매매 결정 결과
+2025-08-06 18:02:36 - gptbitcoin - INFO - ============================================================
+2025-08-06 18:02:36 - gptbitcoin - INFO - 결정: hold
+2025-08-06 18:02:36 - gptbitcoin - INFO - 신뢰도: 0.7
+2025-08-06 18:02:36 - gptbitcoin - INFO - 위험도: medium
+2025-08-06 18:02:36 - gptbitcoin - INFO - 이유: The current market data and chart analysis suggest a neutral position. The RSI is at 51.47, indicating a neutral condition. The MACD shows a slight bullish divergence with a positive histogram, but the signal is not strong enough to confirm a buy. The Bollinger Bands position is near the middle, suggesting no strong trend. The ADX is at 41.97, indicating a moderate trend strength. The Fear and Greed Index is at 54, which is neutral, and the news sentiment is slightly negative. The chart shows a range-bound price action with no clear breakout signals. Overall, the market sentiment and technical indicators suggest holding the position until clearer signals emerge.
+2025-08-06 18:02:37 - gptbitcoin - INFO - 예상 가격 범위: 158,000,000원 ~ 161,000,000원
+2025-08-06 18:02:37 - gptbitcoin - INFO - 주요 지표:
+2025-08-06 18:02:37 - gptbitcoin - INFO -   - RSI: neutral
+2025-08-06 18:02:37 - gptbitcoin - INFO -   - MACD: bullish
+2025-08-06 18:02:37 - gptbitcoin - INFO -   - 볼린저밴드: middle
+2025-08-06 18:02:37 - gptbitcoin - INFO -   - 트렌드 강도: neutral
+2025-08-06 18:02:37 - gptbitcoin - INFO -   - 시장 심리: neutral
+2025-08-06 18:02:37 - gptbitcoin - INFO -   - 뉴스 감정: negative
+2025-08-06 18:02:37 - gptbitcoin - INFO - 현재 가격: 159,432,000원
+2025-08-06 18:02:37 - gptbitcoin - INFO - 공포탐욕지수: 54 (Neutral)
+2025-08-06 18:02:37 - gptbitcoin - INFO - 뉴스 분석: 긍정 10개, 부정 14개, 중립 76개
+2025-08-06 18:02:37 - gptbitcoin - INFO - ============================================================
+2025-08-06 18:02:37 - gptbitcoin - INFO - ========================================
+2025-08-06 18:02:37 - gptbitcoin - INFO - 매매 실행 결과
+2025-08-06 18:02:37 - gptbitcoin - INFO - ========================================
+2025-08-06 18:02:37 - gptbitcoin - INFO - 결정: hold
+2025-08-06 18:02:37 - gptbitcoin - INFO - 성공 여부: 성공
+2025-08-06 18:02:37 - gptbitcoin - INFO - ========================================
+2025-08-06 18:17:49 - gptbitcoin - INFO - ============================================================
+2025-08-06 18:17:49 - gptbitcoin - INFO - AI 매매 결정 결과
+2025-08-06 18:17:49 - gptbitcoin - INFO - ============================================================
+2025-08-06 18:17:49 - gptbitcoin - INFO - 결정: hold
+2025-08-06 18:17:49 - gptbitcoin - INFO - 신뢰도: 0.7
+2025-08-06 18:17:49 - gptbitcoin - INFO - 위험도: medium
+2025-08-06 18:17:49 - gptbitcoin - INFO - 이유: The current Bitcoin price is near the middle of the Bollinger Bands, indicating a neutral position. The RSI is at 66.76, suggesting slightly overbought conditions, but not extreme. The MACD shows a positive value, indicating bullish momentum, but the histogram is decreasing, suggesting weakening momentum. The Fear and Greed Index is neutral, and news sentiment is slightly negative, indicating market uncertainty. The chart shows no clear bullish or bearish patterns, and volume is normal. Overall, the market is in a consolidation phase, and a hold decision is recommended until clearer signals emerge.
+2025-08-06 18:17:49 - gptbitcoin - INFO - 예상 가격 범위: 158,000,000원 ~ 161,000,000원
+2025-08-06 18:17:49 - gptbitcoin - INFO - 주요 지표:
+2025-08-06 18:17:49 - gptbitcoin - INFO -   - RSI: neutral
+2025-08-06 18:17:49 - gptbitcoin - INFO -   - MACD: bullish
+2025-08-06 18:17:49 - gptbitcoin - INFO -   - 볼린저밴드: middle
+2025-08-06 18:17:49 - gptbitcoin - INFO -   - 트렌드 강도: neutral
+2025-08-06 18:17:49 - gptbitcoin - INFO -   - 시장 심리: neutral
+2025-08-06 18:17:49 - gptbitcoin - INFO -   - 뉴스 감정: negative
+2025-08-06 18:17:49 - gptbitcoin - INFO - 현재 가격: 159,841,000원
+2025-08-06 18:17:49 - gptbitcoin - INFO - 공포탐욕지수: 54 (Neutral)
+2025-08-06 18:17:49 - gptbitcoin - INFO - 뉴스 분석: 긍정 10개, 부정 14개, 중립 76개
+2025-08-06 18:17:49 - gptbitcoin - INFO - ============================================================
+2025-08-06 18:17:49 - gptbitcoin - INFO - ========================================
+2025-08-06 18:17:49 - gptbitcoin - INFO - 매매 실행 결과
+2025-08-06 18:17:49 - gptbitcoin - INFO - ========================================
+2025-08-06 18:17:49 - gptbitcoin - INFO - 결정: hold
+2025-08-06 18:17:49 - gptbitcoin - INFO - 성공 여부: 성공
+2025-08-06 18:17:49 - gptbitcoin - INFO - ========================================

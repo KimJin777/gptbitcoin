@@ -29,6 +29,13 @@
 - **1시간 차트 + 볼린저 밴드 설정**
 - **Base64 인코딩으로 OpenAI 전송**
 
+### 🗄️ 데이터베이스 관리
+- **MySQL 8.0 데이터베이스 연동**
+- **거래 기록 자동 저장**
+- **시장 데이터 히스토리 관리**
+- **거래 통계 및 수익률 분석**
+- **시스템 로그 저장 및 조회**
+
 ## 🛠️ 설치 및 설정
 
 ### 1. 필요한 라이브러리 설치
@@ -36,7 +43,19 @@
 pip install -r requirements.txt
 ```
 
-### 2. 환경 변수 설정 (.env 파일)
+### 2. MySQL 데이터베이스 설정
+
+#### MySQL 8.0 설치 (Windows)
+1. [MySQL Community Server](https://dev.mysql.com/downloads/mysql/) 다운로드
+2. 설치 시 root 비밀번호 설정
+3. MySQL 서비스 시작
+
+#### 데이터베이스 생성
+```sql
+CREATE DATABASE gptbitcoin CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+```
+
+### 3. 환경 변수 설정 (.env 파일)
 ```env
 # 업비트 API 키
 UPBIT_ACCESS_KEY=your_upbit_access_key
@@ -47,6 +66,13 @@ OPENAI_API_KEY=your_openai_api_key
 
 # SerpAPI 키 (뉴스 분석용)
 SERP_API_KEY=your_serpapi_key
+
+# MySQL 데이터베이스 설정
+DB_HOST=localhost
+DB_PORT=3306
+DB_NAME=gptbitcoin
+DB_USER=root
+DB_PASSWORD=your_mysql_password
 ```
 
 ### 3. API 키 발급 방법
@@ -68,7 +94,12 @@ SERP_API_KEY=your_serpapi_key
 
 ### 메인 자동매매 시스템 실행
 ```bash
-python advanced_ai_trading.py
+python main.py
+```
+
+### 거래 기록 조회
+```bash
+python view_trades.py
 ```
 
 ### 뉴스 분석 시스템 실행 (독립 실행)

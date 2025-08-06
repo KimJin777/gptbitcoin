@@ -1,13 +1,36 @@
+# 환경 변수 관리
 python-dotenv
+
+# AI 및 API
 openai
+pydantic
+
+# 암호화폐 거래
 pyupbit
+
+# 기술적 분석
 ta
-requests
 pandas
 numpy
+
+# 웹 스크래핑 및 이미지 처리
 selenium
 webdriver-manager
+Pillow
+requests
 beautifulsoup4
 lxml
 bs4
-Pillow
+
+# 로깅 및 유틸리티
+logging
+datetime
+os
+time
+json
+base64
+io
+typing
+
+# 데이터베이스
+mysql-connector-python
