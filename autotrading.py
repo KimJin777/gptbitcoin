@@ -600,6 +600,7 @@ def get_investment_status(upbit):
     }
 
 def create_market_analysis_data_with_indicators(daily_df, minute_df, current_price, orderbook, fear_greed_data, analyzed_news):
+    """AWS 환경에 최적화된 시장 분석 데이터 생성"""
     """
     기술적 지표, 공포탐욕지수, 뉴스가 포함된 AI 분석용 시장 데이터 생성
     """
