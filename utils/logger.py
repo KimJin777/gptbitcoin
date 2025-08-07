@@ -68,3 +68,37 @@ def log_performance_analysis(logger: logging.Logger, period_type: str, metrics: 
         metrics: 성과 지표
     """
     logger.info(f"성과 분석: {period_type} - 승률: {metrics.get('win_rate', 0):.2%}")
+
+def setup_logger(name: str = "gptbitcoin") -> logging.Logger:
+    """
+    로거를 설정하고 반환합니다.
+    
+    Args:
+        name: 로거 이름
+        
+    Returns:
+        로거 인스턴스
+    """
+    return get_logger(name)
+
+def log_trading_decision(logger: logging.Logger, decision: dict, market_data: dict) -> None:
+    """
+    매매 결정 로그를 기록합니다.
+    
+    Args:
+        logger: 로거 인스턴스
+        decision: 매매 결정
+        market_data: 시장 데이터
+    """
+    logger.info(f"매매 결정: {decision.get('decision', 'unknown')} - 이유: {decision.get('reasoning', 'none')}")
+
+def log_execution_result(logger: logging.Logger, decision: dict, execution_result: dict) -> None:
+    """
+    실행 결과 로그를 기록합니다.
+    
+    Args:
+        logger: 로거 인스턴스
+        decision: 매매 결정
+        execution_result: 실행 결과
+    """
+    logger.info(f"실행 결과: {execution_result.get('action', 'none')} - 성공: {execution_result.get('success', False)}")
